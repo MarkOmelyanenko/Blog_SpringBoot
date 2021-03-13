@@ -1,0 +1,401 @@
+В application.properties через server.port = 8081 можно указать другой порт
+
+
+В application.properties через прописываем подключение(?) к БД
+spring.jpa.hibernate.ddl-auto=update       --update значит, что работаем с БД как хотим(добавляем, удаляем, изменяем и тд)
+spring.datasource.url=jdbc:mysql://${MYSQL_HOST:localhost}:3306/db_example        --здесь происходит подключение к БД
+                                                                           через JDBC (там указывается где создается БД,
+                                                                           какой порт для БД(если работаем с OpenServer,
+                                                                           то порт менять не нужно), и какое название
+                                                                           для БД(вместо db_example прописываем то название
+                                                                           для БД, которое писали при создании БД(в данном
+                                                                           случае БД в phpmyadmin, кодировку при создании
+                                                                           БД выбираем utf8_general_ci!!!!!!!!!!!))
+spring.datasource.username=springuser        --логин (нужно написать mysql)
+/*если не смогли подключиться, то в юзернейм пишем root, пароль оставляем пустым*/
+spring.datasource.password=ThePassword       --пароль (нужно написать mysql)
+
+
+Spring Boot работает по шаблону проектирования MVC. Этот шаблон разбивает все файлы на три категории:
+    1. Контроллеры - отслеживают URL адреса и вызывают модели, а также шаблоны;
+    2. Модели - служат для работы с базой данных (создание таблиц, записей и манипуляция с ними);
+    3. Шаблоны - HTML страницы что отображаются конечному пользователю в веб-браузере.
+
+
+
+
+
+
+@Controller    --класс, который отвечает за обработку переходов !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+public class MainController {
+
+    @GetMapping("/")   --указываем какой именно URL адрес обрабатываем, ("/") - обработка главной страницы
+    public String home(Model model) {     --при переходе на страничку выполняем метод, Model model ВСЕГДА ПРОПИСЫВАЕМ!!!
+        model.addAttribute("title", "Sweet Home");     --кидаем параметры внутрь шаблона(title - название, Sweet Home - значение)
+        return "home";     --выкидываем шаблон
+    }
+
+}
+
+
+
+
+
+---------------------Ниже модель таблицы---------------------
+@Entity         --класс-модель, который отвечает за определенную табличку внутри БД !!!!!!!!!!!!!!!!!!!!!! на сколько я
+                  понял, это класс, который отвечает за таблицу в БД
+public class Post {
+
+    // ниже нужно создать переменные, которые будут отвечать за поля в таблице
+
+    @Id                --создает уникальный идентификатор;
+                       нужно, то бы @Id шла из библиотеки javax.persistence.Id !!!!!!!!!!!!!!
+    @GeneratedValue(strategy = GenerationType.AUTO)  --позволяет генерировать значение для поля ниже при
+                                                       создании(в данном случае) статьи, будет генерировать автоматически
+    private Long id;   --уникальный идентификатор
+
+    private String title, anons, full_text;
+    private int views;
+
+
+    --геттеры и сеттеры для работы
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getAnons() {
+        return anons;
+    }
+
+    public void setAnons(String anons) {
+        this.anons = anons;
+    }
+
+    public String getFull_text() {
+        return full_text;
+    }
+
+    public void setFull_text(String full_text) {
+        this.full_text = full_text;
+    }
+
+    public int getViews() {
+        return views;
+    }
+
+    public void setViews(int views) {
+        this.views = views;
+    }
+
+!!!!!!!!!!!!!!!!!!Этот конструктор очень нужен и всегда должен быть(нужен(для корректной работы) для того, что бы передать данные с формы(в данном случае))!!!!!!!!!!!!!!!!!!
+    public Post() {
+
+    }
+
+!!!!!!!!!!!!!!!!!!Конструктор в который можно передать данные(нужен для того, что бы передать данные с формы(в данном случае))!!!!!!!!!!!!!!!!!!
+    public Post(String title, String anons, String full_text) {
+        this.title = title;
+        this.anons = anons;
+        this.full_text = full_text;
+    }
+
+}
+
+
+
+
+Что бы манипулировать с какой-то табличкой(моделью) нужно создать для нее интерфейс(для каждой модели нужно
+создавать свой репозиторий(интерфейс))
+Интерфейс для модели нужно унаследовать от интерфейса CrudRepository, в нём есть нужные методы для манипуляций с таблицами
+public interface PostRepository extends CrudRepository<Post> {  --в угловых скобках указываем с какой таблицей(моделлю)
+                                                                  работаем и указываем тип идентификатора
+}
+
+
+
+
+@Controller
+public class BlogController {
+
+    @Autowired            --аннотация для того, что бы создать переменную, которая будет ссылаться на репозиторий модели
+    private PostRepository postRepository;
+
+    @GetMapping("/blog")
+    public String blogMain(Model model) {
+        Iterable<Post> posts = postRepository.findAll();           --записываем все данные из определенной
+                                                                     таблицы(из какой таблицы указываем в <>) в "массив";
+                                                                     .findAll() вытягивает все записи из таблицы Post
+        model.addAttribute("posts", posts);                    --передаем в шаблон
+        return "blog-main";
+    }
+
+    @GetMapping("/blog/add")                    --получение данных со страницы
+        public String blogAdd(Model model) {
+            return "blog-add";
+        }
+
+    @PostMapping("/blog/add")        --получение данных с формы
+    public String blogPostAdd(@RequestParam String title, @RequestParam String anons, @RequestParam String full_text, Model model) { --получение новых параметров(какой тип
+                                                                                                                                       данных получаем, название параметра(мы
+                                                                                                                                       input'у прописали поле name="title",
+                                                                                                                                       по-этому название title, смотри
+                                                                                                                                       blog-add.html и так с другими параметрами))
+        Post post = new Post(title, anons, full_text);    --создаем объект на основе модели
+        postRepository.save(post);                        --обращаемся к репозиторию, обращаемся к методу save(он отвечает
+                                                            за сохранение данных в таблицу) и в метод передаем обьект,
+                                                            который хотим сохранить
+        return "redirect:/blog";                          --переадресовываем юзера на страницу "blog"
+    }
+
+
+    @GetMapping("/blog/{id}")  --прописываем динамическое значение(можно прописать несколько)
+    public String blogDetails(@PathVariable(value = "id") long id, Model model) { --берем динамическое значение из
+                                                                                    URL(пишем какое именно значение
+                                                                                    берем из URL) и создаем параметр
+
+        if (!postRepository.existsById(id)) { --проверка на то, есть ли статья с данным id в модельке
+            return "redirect:/blog";
+        }
+
+        Optional<Post> post = postRepository.findById(id);    --обращаемся к репозиторию модели и берем запись
+                                                                за ее id; записи, которые получим с помощью метода,
+                                                                нужно помещать в объект, которые идет на основе
+                                                                класса Optional(в угловых скобках указываем с какой
+                                                                моделью работаем)
+        !!!Нужно перевести объект из Optional в ArrayList, потому что внутри шаблона с Optional сложно работать!!!
+        ArrayList<Post> res = new ArrayList<>();  --в угловых скобках указываем на основе какого класса будут храниться объекты
+        post.ifPresent(res::add); --обращаемся к post и прописываем, что из Optional мы все переводим в ArrayList
+        model.addAttribute("post", post);
+        return "blog-add";
+    }
+
+    @PostMapping("/blog/{id}/edit")
+    public String blogPostUpdate(@PathVariable(value = "id") long id,
+                                 @RequestParam String title,
+                                 @RequestParam String anons,
+                                 @RequestParam String full_text, Model model) {
+        Post post = postRepository.findById(id).orElseThrow();        --без .orElseThrow() будет ошибка(выбрасывает
+                                                                         исключение, если запись была не найдена
+        post.setTitle(title);              --устанавливаем новое значение, которое ввел юзер
+        post.setAnons(anons);              --устанавливаем новое значение, которое ввел юзер
+        post.setFull_text(full_text);      --устанавливаем новое значение, которое ввел юзер
+
+        return "redirect:/blog";
+    }
+}
+
+
+
+
+
+Эстетика:
+Контроллеры кидаем в папку Controllers
+Модели кидаем в папку Models
+Интерфейсы для манипуляций с моделями кидаем в папку repo
+Шаблоны кидаем в папку templates
+Код который используеться в большинстве html-файлах кидаем в папку blocks, которая находится в папке templates
+
+
+
+
+
+Что бы не прописывать в каждом html файле footer и header по новой или изменить один раз и для всех, то делаем следующее:
+    1. Создаем header.html(например) и кидаем туда(например)
+        <div th:fragment="header"> (насколько я понял, здесь задаем имя фрагменту) (xmlns:th="http://www.w3.org/1999/xhtml" прописывать не обязательно,
+                                  если оно прописано в тех файлах, куда вставляем фрагмент)
+            <div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-body border-bottom shadow-sm">
+                <p class="h5 my-0 mr-md-auto fw-normal">Marchello Industry</p>
+                <nav class="my-2 my-md-0 mr-md-3">
+                    <a class="p-2 text-dark" href="/">Home</a>
+                    <a class="p-2 text-dark" href="/blog">Blog</a>
+                    <a class="p-2 text-dark" href="/about">About</a>
+                </nav>
+                <a class="btn btn-outline-primary" href="#">Sign up</a>
+            </div>
+        </div>
+    2. Создаем footer.html(например) и кидаем туда(например)
+        <div th:fragment="footer"> (насколько я понял, здесь задаем имя фрагменту) (xmlns:th="http://www.w3.org/1999/xhtml" прописывать не обязательно,
+                                   если оно прописано в тех файлах, куда вставляем фрагмент)
+            <footer class="text-muted py-5">
+                <div class="container">
+                    <p class="float-right">
+                        <a href="#">Back to top</a>
+                    </p>
+                    <p class="mb-1">Album example is © Bootstrap, but please download and customize it for yourself!</p>
+                    <p class="mb-0">New to Bootstrap? <a href="/">Visit the homepage</a> or read our <a href="/docs/5.0/getting-started/introduction/">getting started guide</a>.</p>
+                </div>
+            </footer>
+        </div>
+    3. В нужных нам html-файлах (например) пишем для header и footer:
+        <!DOCTYPE HTML>
+        <html xmlns:th="http://www.thymeleaf.org">
+        <head>
+            <title>Our blog</title>
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+        </head>
+
+        <body>
+
+            <header th:insert="blocks/header :: header"></header> (на сколько я понял, вставляем файл из диерктории и фрагмент кода из файла)
+
+            <div class="container mt-5">
+                <h1>Our blog</h1>
+                <div th:each="el : ${posts}" class="alert alert-info mt-2">   --цикл для того, что бы пройтись по массиву
+                                                                                posts и записывать данные в переменную el
+                                                --тут мы можем работать с переменной el
+                    <h3 th:text="${el.title}"></h3>           --вытягиваем данные title и выводим его
+                    <p th:text="${el.anons}"></p>             --вытягиваем данные anons и вывыдим го
+                    <a th:href="'/blog/' + ${el.id}">More</a>   --ссылка на статью
+                </div>
+            </div>
+
+            <div th:insert="blocks/footer :: footer"></div> (на сколько я понял, вставляем файл из диерктории и фрагмент кода из файла)
+
+        </body>
+        </html>
+
+
+
+
+-!-!-!-!-!-!-!-!-!-!-!-!-!-!-Ищи эти th*здесь что-то*:="" в html-коде выше и ниже-!-!-!-!-!-!-!-!-!-!-!-!-!-!-
+
+
+
+
+-!-!-!-!-!-!-!-!-!-!-!-!-!-!-Обрати внимание на использование th*здесь что-то*:="" в html-коде выше и ниже-!-!-!-!-!-!-!-!-!-!-!-!-!-!-
+
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${title}"/>                                             <--- НА ЭТО ОБРАТИ ВНИМАНИЕ (выводим текст, который в методе прописали)
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+
+<body>
+
+    <header th:insert="blocks/header :: header"></header>
+
+    <div class="container mt-5">
+        <h1 th:text="${title}"/>                                <--- НА ЭТО ОБРАТИ ВНИМАНИЕ (выводим текст, который в методе прописали)
+    </div>
+
+    <div th:insert="blocks/footer :: footer"></div>
+
+</body>
+</html>
+
+
+
+
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Our blog</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+
+<body>
+
+<header th:insert="blocks/header :: header"></header>
+
+<div class="container mt-5">
+    <h1>adding an article</h1>
+    <form action="/blog/add" method="post">    --обработка всех значений, которые будут поступать из формы, будет
+                                                 происходить на этой же старничке; post значит, что данные будут скрытно
+                                                 передаватся на сервак(get - все данные будут перданы в URL адересе)
+        <input type="text" name="title" placholder="Enter the title of the article" class="form-control">
+        <input type="text" name="anons" placholder="Enter the anons of the article" class="form-control">
+        <textarea name="full_text" placholder="Enter the full text of the article" class="form-control"></textarea>
+        <button type="submit" class="btn btn-success">Add the article</button>
+    </form>
+</div>
+
+<div th:insert="blocks/footer :: footer"></div>
+
+</body>
+</html>
+
+
+
+
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Editing an article</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+
+<body>
+
+    <header th:insert="blocks/header :: header"></header>
+
+    <div class="container mt-5 mb-5">
+        <h1>Editing an article</h1>
+        <div th:each="el : ${post}">
+            <form method="post">
+                <input type="text" th:value="${el.title}" name="title" placeholder="Enter the title of the article" class="form-control"><br>   --th:value="${el.title}" значит, что мы подставляем значение title в поле(т.е. там уже будут буковки)
+                <input type="text" th:value="${el.anons}" name="anons" placeholder="Enter the anons of the article" class="form-control"><br>   --th:value="${el.anons}" значит, что мы подставляем значение anons в поле(т.е. там уже будут буковки)
+                <textarea name="full_text" placeholder="Enter the full text of the article" class="form-control" th:text="${el.full_text}"><br>   --th:text="${el.full_text}" значит, что мы подставляем значение full_text в поле(т.е. там уже будут буковки)
+                <button type="submit" class="btn btn-success">Edit the article</button>
+            </form>
+        </div>
+    </div>
+
+    <div th:insert="blocks/footer :: footer"></div>
+
+</body>
+</html>
+
+
+
+
+
+-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-!-
+
+
+Подключение JPA технологии для того, что бы связать Java(Spring)-проект с БД MySQL
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+
+Подключаем штуку, которая встраивает MySQL внутрь проекта
+<dependency>
+	<groupId>mysql</groupId>
+	<artifactId>mysql-connector-java</artifactId>
+	<scope>runtime</scope>
+</dependency>
+
+
+<div class="col">
+                        <div class="card shadow-sm">
+                            <svg class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false"><title>Placeholder</title><rect width="100%" height="100%" fill="#55595c"></rect><text x="50%" y="50%" fill="#eceeef" dy=".3em">Thumbnail</text></svg>
+
+                            <div class="card-body">
+                                <p class="card-text">This is a wider card with supporting text below as a natural lead-in to additional content. This content is a little bit longer.</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary">View</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary">Edit</button>
+                                    </div>
+                                    <small class="text-muted">9 mins</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
